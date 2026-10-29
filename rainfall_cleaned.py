@@ -16,9 +16,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error, r2_score
 
-# ============================================================
-# STEP 1: LOAD DATASET
-# ============================================================
 
 print("Current working directory:", os.getcwd())
 
@@ -36,41 +33,31 @@ print("\nDataset loaded successfully!")
 print("Dataset shape:", df.shape)
 print(df.head())
 
-# ============================================================
-# STEP 2: DATA CLEANING
-# ============================================================
-
 df.columns = df.columns.str.strip()
 df["SUBDIVISION"] = df["SUBDIVISION"].astype(str).str.strip()
 
 df["YEAR"] = pd.to_numeric(df["YEAR"], errors="coerce")
 df["ANNUAL"] = pd.to_numeric(df["ANNUAL"], errors="coerce")
 
-# Remove rows with missing year or target
+
 df = df.dropna(subset=["YEAR", "ANNUAL"])
 df["YEAR"] = df["YEAR"].astype(int)
 
-# Remove negative annual rainfall
 df = df[df["ANNUAL"] >= 0].copy()
 
-# Keep only one record for each subdivision and year
+
 df = df.drop_duplicates(subset=["SUBDIVISION", "YEAR"])
 
-# Sort data chronologically
 df = df.sort_values(["SUBDIVISION", "YEAR"])
 
 print("\nDataset shape after cleaning:", df.shape)
 
-# ============================================================
-# STEP 3: FEATURE ENGINEERING
-# Predict rainfall using previous-year rainfall
-# ============================================================
 
 df["PREVIOUS_YEAR_RAINFALL"] = (
     df.groupby("SUBDIVISION")["ANNUAL"].shift(1)
 )
 
-# Remove rows without a previous-year observation
+
 model_data = df.dropna(
     subset=["PREVIOUS_YEAR_RAINFALL"]
 ).copy()
@@ -80,9 +67,6 @@ target = "ANNUAL"
 
 print("Records available for modelling:", len(model_data))
 
-# ============================================================
-# STEP 4: TRAIN-TEST SPLIT BY YEAR
-# ============================================================
 
 split_year = 2007
 
@@ -107,9 +91,7 @@ print("Training period:",
 print("Testing period:",
       test["YEAR"].min(), "-", test["YEAR"].max())
 
-# ============================================================
-# STEP 5: PREPROCESSING
-# ============================================================
+
 
 numeric_features = ["PREVIOUS_YEAR_RAINFALL"]
 categorical_features = ["SUBDIVISION"]
@@ -127,10 +109,6 @@ preprocessor = ColumnTransformer([
     ("numeric", numeric_transformer, numeric_features),
     ("categorical", categorical_transformer, categorical_features)
 ])
-
-# ============================================================
-# STEP 6: DEFINE MACHINE LEARNING MODELS
-# ============================================================
 
 models = {
     "Mean Baseline": DummyRegressor(strategy="mean"),
@@ -151,9 +129,7 @@ models = {
     ])
 }
 
-# ============================================================
-# STEP 7: TRAIN AND EVALUATE MODELS
-# ============================================================
+
 
 results = []
 predictions = {}
@@ -162,14 +138,13 @@ for name, model in models.items():
 
     print("\nTraining:", name)
 
-    # Train model using earlier years
+   
     model.fit(X_train, y_train)
 
-    # Predict rainfall for later years
+    
     y_pred = model.predict(X_test)
     predictions[name] = y_pred
 
-    # Calculate performance metrics
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
@@ -181,15 +156,13 @@ for name, model in models.items():
         "R2 Score": round(r2, 4)
     })
 
-# Display results
+
 results_df = pd.DataFrame(results).sort_values("MAE")
 
 print("\n========== MODEL PERFORMANCE ==========")
 print(results_df.to_string(index=False))
 
-# ============================================================
-# STEP 8: COMPARE MODEL PERFORMANCE
-# ============================================================
+
 
 plt.figure(figsize=(9, 5))
 plt.bar(results_df["Model"], results_df["MAE"])
@@ -201,9 +174,6 @@ plt.xticks(rotation=15)
 plt.tight_layout()
 plt.show()
 
-# ============================================================
-# STEP 9: ACTUAL VS PREDICTED RAINFALL
-# ============================================================
 
 best_model_name = results_df.iloc[0]["Model"]
 best_predictions = predictions[best_model_name]
@@ -222,9 +192,6 @@ plt.ylabel("Predicted Annual Rainfall (mm)")
 plt.tight_layout()
 plt.show()
 
-# ============================================================
-# STEP 10: SAVE RESULTS
-# ============================================================
 
 results_df.to_csv("rainfall_model_results.csv", index=False)
 
